@@ -1,0 +1,10 @@
+django>=4.2
+djangorestframework
+djangorestframework-simplejwt[blacklist]
+django-cors-headers
+django-environ
+django[argon2]
+psycopg2-binary
+channels[daphne]
+channels-redis
+redis
