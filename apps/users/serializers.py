@@ -13,6 +13,12 @@ class UserSummarySerializer(serializers.ModelSerializer):
         fields = ("id", "username", "display_name", "is_staff")
 
 
+class CurrentUserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("display_name", "x25519_public_key", "ed25519_public_key")
+
+
 class InviteCompleteSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True, min_length=8)

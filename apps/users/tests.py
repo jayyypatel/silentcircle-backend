@@ -166,6 +166,26 @@ class AuthFlowTests(APITestCase):
         self.assertIn("access", response.data)
         self.assertIn("refresh_token", response.cookies)
 
+    def test_token_refresh_missing_cookie_returns_401(self):
+        response = self.client.post(reverse("auth-token-refresh"), {}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_clears_refresh_cookie(self):
+        login = self.client.post(
+            reverse("auth-login"),
+            {"username": "alice", "password": "password12345"},
+            format="json",
+        )
+        access_token = login.data["access"]
+        refresh_token = login.cookies["refresh_token"].value
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+        self.client.cookies["refresh_token"] = refresh_token
+
+        response = self.client.post(reverse("auth-logout"), {}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIn("refresh_token", response.cookies)
+
     def test_change_password_blacklists_existing_refresh_tokens(self):
         login = self.client.post(
             reverse("auth-login"),
@@ -208,6 +228,28 @@ class UserSearchTests(APITestCase):
         self.assertNotIn("alice", usernames)
 
 
+class CurrentUserTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("operator", "Operator", "password12345")
+        self.client.force_authenticate(user=self.user)
+
+    def test_patch_current_user_updates_public_keys_and_display_name(self):
+        response = self.client.patch(
+            reverse("users-me"),
+            {
+                "display_name": "Updated Operator",
+                "x25519_public_key": "x-new",
+                "ed25519_public_key": "ed-new",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.display_name, "Updated Operator")
+        self.assertEqual(self.user.x25519_public_key, "x-new")
+        self.assertEqual(self.user.ed25519_public_key, "ed-new")
+
+
 class AdminPermissionTests(APITestCase):
     def setUp(self):
         self.staff = User.objects.create_user("staff", "Staff", "password12345", is_staff=True)
@@ -222,3 +264,65 @@ class AdminPermissionTests(APITestCase):
         self.client.force_authenticate(user=self.staff)
         response = self.client.get(reverse("admin-users-list-create"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class AdminInviteFlowTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user("staffadmin", "Staff Admin", "password12345", is_staff=True)
+        self.assigned = User.objects.create_user("targetuser", "Target User", "password12345")
+
+    def test_admin_can_create_list_and_revoke_invite(self):
+        self.client.force_authenticate(user=self.staff)
+        create_response = self.client.post(
+            reverse("admin-invites-list-create"),
+            {"assigned_to": str(self.assigned.id), "expires_hours": 24},
+            format="json",
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        invite_id = create_response.data["id"]
+
+        list_response = self.client.get(reverse("admin-invites-list-create"))
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(any(item["id"] == invite_id for item in list_response.data))
+
+        revoke_response = self.client.delete(reverse("admin-invites-revoke", kwargs={"pk": invite_id}))
+        self.assertEqual(revoke_response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_admin_cannot_revoke_used_invite(self):
+        invite = InviteToken.objects.create(
+            created_by=self.staff,
+            assigned_to=self.assigned,
+            used_by=self.assigned,
+            used_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.delete(reverse("admin-invites-revoke", kwargs={"pk": invite.id}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class AdminUserStatusTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user("statusstaff", "Status Staff", "password12345", is_staff=True)
+        self.target = User.objects.create_user("statususer", "Status User", "password12345")
+
+    def test_admin_can_deactivate_and_reactivate_user(self):
+        self.client.force_authenticate(user=self.staff)
+
+        deactivate_response = self.client.post(
+            reverse("admin-users-deactivate", kwargs={"pk": self.target.id}),
+            {"is_active": False},
+            format="json",
+        )
+        self.assertEqual(deactivate_response.status_code, status.HTTP_200_OK)
+        self.target.refresh_from_db()
+        self.assertFalse(self.target.is_active)
+
+        reactivate_response = self.client.post(
+            reverse("admin-users-deactivate", kwargs={"pk": self.target.id}),
+            {"is_active": True},
+            format="json",
+        )
+        self.assertEqual(reactivate_response.status_code, status.HTTP_200_OK)
+        self.target.refresh_from_db()
+        self.assertTrue(self.target.is_active)

@@ -67,6 +67,7 @@ DATABASES = {
         default="postgresql://postgres:postgres@127.0.0.1:5432/postgres",
     )
 }
+
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=0)
 
 AUTH_PASSWORD_VALIDATORS = [

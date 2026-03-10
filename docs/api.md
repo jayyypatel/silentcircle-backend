@@ -1,5 +1,14 @@
 # SilentCircle Backend API (Phase 1)
 
+## Onboarding Policy
+- Account onboarding is invite-only.
+- Expected path:
+  1. staff/admin creates invite via `/api/admin/invites/`
+  2. recipient opens `/invite/<token>` in frontend
+  3. recipient completes password + public key registration
+  4. user then logs in normally from `/login` afterward
+- Staff users should use dedicated frontend shell at `/admin`; non-staff should use `/chat`.
+
 ## Auth Endpoints
 
 ### `GET /api/auth/invite/<token>/validate/`
@@ -49,6 +58,7 @@
 ```
 - Sets rotated refresh cookie.
 - 401 when cookie missing/invalid.
+- Frontend boot flow should call this endpoint on page load before deciding logged-in state.
 
 ### `GET /api/auth/ws-ticket/`
 - Auth: JWT required
@@ -79,6 +89,19 @@
 ```json
 { "id": "...", "username": "...", "display_name": "...", "is_staff": false }
 ```
+
+### `PATCH /api/users/me/`
+- Auth: JWT required
+- Purpose: update profile/public keys for the authenticated user (used by New Device flow).
+- Accepted fields:
+```json
+{
+  "display_name": "...",
+  "x25519_public_key": "...",
+  "ed25519_public_key": "..."
+}
+```
+- 200: returns current user summary.
 
 ### `GET /api/users/search/?q=<query>`
 - Auth: JWT required

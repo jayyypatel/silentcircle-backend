@@ -17,12 +17,23 @@ If code generation conflicts with this doc, update this doc first or fix the gen
 - `apps/conversations/`, `apps/messages/`, `apps/realtime/`: placeholders for next phases
 
 ## Runtime Flow (Phase 1)
-1. User completes invite or logs in.
-2. Backend issues access token in response body.
-3. Backend issues refresh token in `HttpOnly` cookie.
-4. Client sends `Authorization: Bearer <access>` for protected endpoints.
-5. Client refreshes access token via `/api/auth/token/refresh/` using cookie.
-6. For websocket bootstrap, client requests `/api/auth/ws-ticket/`; server stores one-time ticket in Redis (`ws_ticket:<uuid>`, 30s TTL).
+1. Admin creates an invite for a pre-created user.
+2. User completes invite or logs in.
+3. Backend issues access token in response body.
+4. Backend issues refresh token in `HttpOnly` cookie.
+5. Client sends `Authorization: Bearer <access>` for protected endpoints.
+6. Client refreshes access token via `/api/auth/token/refresh/` using cookie.
+7. Client bootstraps session on app load by attempting refresh first, then `/api/users/me/`.
+8. For websocket bootstrap, client requests `/api/auth/ws-ticket/`; server stores one-time ticket in Redis (`ws_ticket:<uuid>`, 30s TTL).
+
+## Frontend Conventions (Phase 1)
+- Login does not create accounts.
+- Invite onboarding is URL-token based (`/invite/:token`) and must come from admin-generated invite.
+- Theme system supports dark/light modes with persisted preference in `localStorage`.
+- If refresh bootstrap fails, frontend clears local auth and routes to `/login`.
+- Frontend has split shells:
+  - `/chat` for regular users
+  - `/admin` for staff-only management operations
 
 ## App Responsibilities
 - `users` owns identity, authentication flows, password changes, user search, admin user management.
@@ -31,7 +42,7 @@ If code generation conflicts with this doc, update this doc first or fix the gen
 ## Non-goals in Phase 1
 - No conversation/message persistence APIs yet.
 - No websocket consumer yet (ticket minting only).
-- No frontend implementation tracked in this repo.
+- No conversation UI implementation yet (chat page is placeholder).
 
 ## API Prefixes
 - `/api/auth/` authentication and session lifecycle

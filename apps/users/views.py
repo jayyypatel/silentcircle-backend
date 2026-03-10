@@ -23,6 +23,7 @@ from .serializers import (
     AdminUserDeactivateSerializer,
     AdminUserSerializer,
     ChangePasswordSerializer,
+    CurrentUserUpdateSerializer,
     InviteCompleteSerializer,
     InviteTokenSerializer,
     LoginSerializer,
@@ -229,6 +230,12 @@ class ChangePasswordView(APIView):
 
 class CurrentUserView(APIView):
     def get(self, request):
+        return Response(UserSummarySerializer(request.user).data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        serializer = CurrentUserUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(UserSummarySerializer(request.user).data, status=status.HTTP_200_OK)
 
 

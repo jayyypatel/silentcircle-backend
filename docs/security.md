@@ -5,6 +5,7 @@
 - Refresh token: JWT stored in `HttpOnly` cookie only.
 - Refresh rotation: enabled.
 - Blacklist-after-rotation: enabled.
+- Frontend startup should attempt refresh-on-load and only consider session valid after `/api/users/me/` succeeds.
 
 ## Password Handling
 - Django password hashers prioritize Argon2.
@@ -18,6 +19,8 @@
   - verifies token validity,
   - sets credentials and public keys,
   - marks invite as used.
+- Private keys must remain client-side only.
+- New-device/public-key rotation updates should use authenticated `PATCH /api/users/me/`.
 
 ## Cookie Security
 Defaults via env:
@@ -37,6 +40,8 @@ Defaults via env:
 - Default DRF permission is authenticated.
 - Public endpoints are explicitly marked `AllowAny`.
 - Admin endpoints require `is_staff` through custom permission.
+- Invite creation/revocation must remain staff-only (`/api/admin/invites/*`).
+- Frontend should keep admin workflows in a dedicated `/admin` shell to reduce accidental exposure.
 
 ## Logging and Data Exposure Rules
 - Do not log plaintext passwords, JWTs, refresh cookies, or raw invite tokens.
