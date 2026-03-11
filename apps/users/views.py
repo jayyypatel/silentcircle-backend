@@ -27,6 +27,7 @@ from .serializers import (
     InviteCompleteSerializer,
     InviteTokenSerializer,
     LoginSerializer,
+    PublicKeySerializer,
     TokenRefreshOutputSerializer,
     UserSearchSerializer,
     UserSummarySerializer,
@@ -253,6 +254,12 @@ class UserSearchView(generics.ListAPIView):
             .exclude(id=self.request.user.id)
             .only("id", "username", "display_name")[:10]
         )
+
+
+class UserPublicKeysView(APIView):
+    def get(self, request, user_id):
+        user = get_object_or_404(User.objects.only("id", "username", "x25519_public_key", "ed25519_public_key"), id=user_id, is_active=True)
+        return Response(PublicKeySerializer(user).data, status=status.HTTP_200_OK)
 
 
 class AdminUserListCreateView(generics.ListCreateAPIView):

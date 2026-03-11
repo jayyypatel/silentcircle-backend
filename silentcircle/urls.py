@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/auth/", include("apps.users.urls_auth")),
     path("api/users/", include("apps.users.urls_users")),
     path("api/admin/", include("apps.users.urls_admin")),
+    path("api/friends/", include("apps.conversations.urls_friends")),
     path("api/conversations/", include("apps.conversations.urls")),
-    path("api/messages/", include("apps.messages.urls")),
+    path("api/conversations/", include("apps.messages.urls")),
 ]

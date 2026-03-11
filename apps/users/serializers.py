@@ -55,6 +55,12 @@ class UserSearchSerializer(serializers.ModelSerializer):
         fields = ("id", "username", "display_name")
 
 
+class PublicKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "username", "x25519_public_key", "ed25519_public_key")
+
+
 class AdminUserSerializer(serializers.ModelSerializer):
     invited_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
 

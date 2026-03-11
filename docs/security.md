@@ -1,4 +1,4 @@
-# SilentCircle Security Baseline (Phase 1)
+# SilentCircle Security Baseline (Phase 2)
 
 ## Authentication Model
 - Access token: JWT returned in response body.
@@ -35,6 +35,7 @@ Defaults via env:
   - key: `ws_ticket:<uuid>`
   - value: `user_id`
   - TTL: 30 seconds
+- Middleware consumes ticket atomically (`GETDEL`) and rejects missing/invalid ticket with close code `4001`.
 
 ## Authorization Rules
 - Default DRF permission is authenticated.
@@ -42,11 +43,18 @@ Defaults via env:
 - Admin endpoints require `is_staff` through custom permission.
 - Invite creation/revocation must remain staff-only (`/api/admin/invites/*`).
 - Frontend should keep admin workflows in a dedicated `/admin` shell to reduce accidental exposure.
+- Friend request actions must enforce actor ownership:
+  - only target can accept/reject
+  - only sender can cancel
+- Conversation creation requires accepted friendship.
+- Message history/read endpoints must enforce conversation membership and recipient ownership.
+- Realtime send handler validates membership + friendship before persisting messages.
 
 ## Logging and Data Exposure Rules
 - Do not log plaintext passwords, JWTs, refresh cookies, or raw invite tokens.
 - Do not log encrypted message payloads in future realtime/message endpoints.
 - Error messages should stay generic for credential failures.
+- Keep friend/conversation failures generic enough to avoid user enumeration through detail leakage.
 
 ## Operational Security Checklist
 - Set strong `DJANGO_SECRET_KEY` and `JWT_SIGNING_KEY` (32+ chars recommended for HS256).

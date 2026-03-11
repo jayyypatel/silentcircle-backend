@@ -1,4 +1,4 @@
-# SilentCircle Backend API (Phase 1)
+# SilentCircle Backend API (Phase 2: Friend-Gated 1:1 Chat)
 
 ## Onboarding Policy
 - Account onboarding is invite-only.
@@ -107,6 +107,119 @@
 - Auth: JWT required
 - Minimum `q` length: 2
 - Returns max 10 active users, excludes requester.
+
+### `GET /api/users/<uuid:user_id>/public-keys/`
+- Auth: JWT required
+- Returns:
+```json
+{
+  "id": "<uuid>",
+  "username": "alice",
+  "x25519_public_key": "...",
+  "ed25519_public_key": "..."
+}
+```
+
+## Friendship Endpoints
+
+### `POST /api/friends/requests/`
+- Auth: JWT required
+- Request accepts one of:
+```json
+{ "username": "bob" }
+```
+or
+```json
+{ "user_id": "<uuid>" }
+```
+- Rules:
+  - self-request blocked
+  - duplicate pending outgoing returns existing pending record
+  - if reverse pending exists, request auto-merges to friendship and both requests become accepted
+
+### `GET /api/friends/requests/incoming/`
+- Auth: JWT required
+- Returns pending requests where current user is target.
+
+### `GET /api/friends/requests/outgoing/`
+- Auth: JWT required
+- Returns pending requests created by current user.
+
+### `POST /api/friends/requests/<uuid:pk>/accept/`
+- Auth: JWT required
+- Only request target can accept.
+- Creates canonical friendship row.
+
+### `POST /api/friends/requests/<uuid:pk>/reject/`
+- Auth: JWT required
+- Only request target can reject.
+
+### `POST /api/friends/requests/<uuid:pk>/cancel/`
+- Auth: JWT required
+- Only request sender can cancel.
+
+### `GET /api/friends/`
+- Auth: JWT required
+- Returns accepted friend list for current user.
+
+## Conversation and Message Endpoints
+
+### `GET /api/conversations/`
+- Auth: JWT required
+- Returns conversations where requester is a member.
+
+### `POST /api/conversations/`
+- Auth: JWT required
+- Request:
+```json
+{ "user_id": "<friend_uuid>" }
+```
+- Private conversation only in Phase 2.
+- Requires accepted friendship.
+- Duplicate guard returns existing private conversation (200) if already present.
+
+### `GET /api/conversations/<uuid:pk>/`
+- Auth: JWT required
+- Returns conversation details if requester is a member, else 404.
+
+### `GET /api/conversations/<uuid:pk>/messages/`
+- Auth: JWT required
+- Recipient-scoped message history for requester in this conversation.
+- Ordered newest-first by sequence number.
+
+### `POST /api/conversations/<uuid:pk>/messages/<uuid:msg_id>/read/`
+- Auth: JWT required
+- Marks message read for requester if requester is recipient.
+- Emits read receipt to sender channel group.
+
+## WebSocket Contract
+
+### Connect
+- URL: `/ws/chat/?ticket=<uuid>`
+- Ticket source: `GET /api/auth/ws-ticket/`
+- Ticket is one-time use and 30-second TTL.
+
+### Client -> Server events
+- `send_message`: `{ conversation_id, recipient_id, encrypted_payload, nonce, signature, temp_id? }`
+- `typing_start`: `{ conversation_id, recipient_id }`
+- `typing_stop`: `{ conversation_id, recipient_id }`
+- `message_read`: `{ message_id }`
+
+### Server -> Client events
+- `connected`
+- `message_ack`
+- `receive_message`
+- `delivered_receipt`
+- `read_receipt`
+- `typing`
+
+### WS Enforcement Rules
+- Rejects missing/invalid ticket in middleware.
+- `send_message` validates:
+  - sender is conversation member
+  - sender and recipient are friends
+- Sequence number assigned server-side per `(conversation, recipient)`.
+- Delivery receipt issued only when recipient presence key exists.
 
 ## Admin Endpoints (staff only)
 
