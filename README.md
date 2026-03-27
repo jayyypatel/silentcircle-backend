@@ -147,15 +147,4 @@ REST handles auth, history, user lookup. WebSocket handles live delivery, typing
 | 🔴 Phase 4 | Rich Comms | WebRTC calls, file sharing, Double Ratchet |
 
 ---
-
-## ❓ Open Questions
-
-1. **Key recovery** — seed phrase support, or accept key loss on new device?
-2. **Deletion policy** — soft delete (keep ciphertext) or hard delete + GDPR?
-3. **Admin password reset** — forces keypair reset, old messages lost. Warn users.
-4. **Group encryption** — per-recipient blobs (stronger) or shared group key (simpler)?
-5. **Multi-device** — allowed for MVP, full sync is Phase 3+
-
----
-
 *SilentCircle Architecture v2.0 · MVP Complete*
